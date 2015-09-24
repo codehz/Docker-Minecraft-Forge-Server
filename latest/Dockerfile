@@ -30,3 +30,5 @@ EXPOSE 25565
 
 ENTRYPOINT ["/usr/local/bin/minecraft"]
 CMD ["run"]
+
+CMD /bin/bash
