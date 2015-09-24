@@ -1,0 +1,161 @@
+#!/bin/bash
+SCREEN_NAME=MinecraftForgeServer
+MCSERVER_PATH=${MCSERVER_PATH:-"/srv/minecraft"}
+MINECRAFT_VERSION=${MINECRAFT_VERSION:-1.7.10}
+MCFORGE_VERSION=${MCFORGE_VERSION:-"10.13.4.1492-1.7.10"}
+MCFORGE_INSTALLER_JAR=${MCFORGE_INSTALLER_JAR:-"forge-installer.jar"}
+MCFORGE_INSTALLER_URL="http://files.minecraftforge.net/maven/net/minecraftforge/forge/$MINECRAFT_VERSION-$MCFORGE_VERSION/forge-$MINECRAFT_VERSION-$MCFORGE_VERSION-installer.jar"
+
+MCFORGE_SERVER_JAR="forge-$MINECRAFT_VERSION-$MCFORGE_VERSION-universal.jar"
+
+JAVA_XMX=${JAVA_XMX:-"2G"}
+JAVA_XMS=${JAVA_XMS:-"2G"}
+JAVA_PERMSIZE=${JAVA_PERMSIZE:-"755m"}
+
+if [ $# -eq 0 ]; then
+    echo "Usage: `basename $0` {start|stop|restart|update <minecraft version> <forge version>}" >&2
+    exit 1
+fi
+
+check_env() {
+    if [ "$MINECRAFT_EULA" == "true" ]; then
+        echo "Updating $MCSERVER_PATH/eula.txt"
+        echo "eula=$MINECRAFT_EULA" > $MCSERVER_PATH/eula.txt
+    else
+        >&2 echo "Mojang requires you to accept their EULA. You need to set the MINECRAFT_EULA variable to true."
+        exit 1
+    fi
+
+    # Do not allow to run if there is no DEFAULT_OP
+    if [ -z "$DEFAULT_OP" ]; then
+        >&2 echo "DEFAULT_OP is required. Please set this variable to continue."
+        exit 1
+    fi
+}
+
+download_server() {
+    # Download the Minecraft server JAR if it does not exist.
+    if [ ! -f "$MCSERVER_PATH/$MCFORGE_INSTALLER_JAR" ]; then
+        echo "Downloading $MCFORGE_INSTALLER_JAR"
+        curl -f -S $MCFORGE_INSTALLER_URL -o $MCSERVER_PATH/$MCFORGE_INSTALLER_JAR
+
+        if [ $? -ne 0 ]; then
+            >&2 echo "Unable to download $MCFORGE_INSTALLER_JAR."
+            exit 1
+        fi
+    fi
+}
+install_server() {
+    # Download the Minecraft server JAR if it does not exist.
+    if [ -f "$MCSERVER_PATH/$MCFORGE_INSTALLER_JAR" ]; then
+        echo "Install forge V$MCFORGE_VERSION"
+        java -server -jar $MCSERVER_PATH/$MCFORGE_INSTALLER_JAR --installServer
+    else
+        echo "Unable install forge V$MCFORGE_VERSION"
+        echo "$MCSERVER_PATH/$MCFORGE_INSTALLER_JAR Not found"
+    fi
+}
+first_run() {
+    if [ ! -f "$MCSERVER_PATH/server.properties" ]; then
+        echo "Creating $MCSERVER_PATH/server.properties"
+        echo "generator-settings=$GENERATOR_SETTINGS" >> $MCSERVER_PATH/server.properties
+        echo "op-permission-level=${OP_PERMISSION_LEVEL:-4}" >> $MCSERVER_PATH/server.properties
+        echo "allow-nether=${ALLOW_NETHER:-true}" >> $MCSERVER_PATH/server.properties
+        echo "level-name=${LEVEL_NAME:-world}" >> $MCSERVER_PATH/server.properties
+        echo "enable-query=${ENABLE_QUERY:-false}" >> $MCSERVER_PATH/server.properties
+        echo "allow-flight=${ALLOW_FLIGHT:-false}" >> $MCSERVER_PATH/server.properties
+        echo "announce-player-achievements=${ANNOUNCE_PLAYER_ACHIEVEMENTS:-true}" >> $MCSERVER_PATH/server.properties
+        echo "server-port=25565" >> $MCSERVER_PATH/server.properties
+        echo "level-type=${LEVEL_TYPE:-DEFAULT}" >> $MCSERVER_PATH/server.properties
+        echo "enable-rcon=${ENABLE_RCON:-false}" >> $MCSERVER_PATH/server.properties
+        echo "force-gamemode=${FORCE_GAMEMODE:-false}" >> $MCSERVER_PATH/server.properties
+        echo "level-seed=$LEVEL_SEED" >> $MCSERVER_PATH/server.properties
+        echo "server-ip=$SERVER_IP" >> $MCSERVER_PATH/server.properties
+        echo "max-build-height=${MAX_BUILD_HEIGHT:-256}" >> $MCSERVER_PATH/server.properties
+        echo "spawn-npcs=${SPAWN_NPCS:-true}" >> $MCSERVER_PATH/server.properties
+        echo "white-list=${WHITE_LIST:-true}" >> $MCSERVER_PATH/server.properties
+        echo "spawn-animals=${SPAWN_ANIMALS:-true}" >> $MCSERVER_PATH/server.properties
+        echo "snooper-enabled=${SNOOPER_ENABLED:-true}" >> $MCSERVER_PATH/server.properties
+        echo "online-mode=${ONLINE_MODE:-true}" >> $MCSERVER_PATH/server.properties
+        echo "resource-pack=$RESOURCE_PACK" >> $MCSERVER_PATH/server.properties
+        echo "pvp=${PVP:-true}" >> $MCSERVER_PATH/server.properties
+        echo "difficulty=${DIFFICULTY:-2}" >> $MCSERVER_PATH/server.properties
+        echo "enable-command-block=${ENABLE_COMMAND_BLOCK:-true}" >> $MCSERVER_PATH/server.properties
+        echo "player-idle-timeout=${PLAYER_IDLE_TIMEOUT:-0}" >> $MCSERVER_PATH/server.properties
+        echo "gamemode=${GAMEMODE:-0}" >> $MCSERVER_PATH/server.properties
+        echo "max-players=${MAX_PLAYERS:-20}" >> $MCSERVER_PATH/server.properties
+        echo "spawn-monsters=${SPAWN_MONSTERS:-true}" >> $MCSERVER_PATH/server.properties
+        echo "view-distance=${VIEW_DISTANCE:-10}" >> $MCSERVER_PATH/server.properties
+        echo "generate-structures=${GENERATE_STRUCTURES:-true}" >> $MCSERVER_PATH/server.properties
+    fi
+
+    # Create default ops.txt if ops.json does not exist yet.
+    if [ ! -f $MCSERVER_PATH/ops.json ]; then
+        echo "Adding $DEFAULT_OP to ops list."
+        echo "$DEFAULT_OP" > $MCSERVER_PATH/ops.txt
+    fi
+}
+
+run_minecraft() {
+    MINECRAFT_OPTS=${MINECRAFT_OPTS:-"-server -Xmx$JAVA_XMX -Xms$JAVA_XMS -XX:MaxPermSize=$JAVA_PERMSIZE -XX:+UseParNewGC -XX:+UseConcMarkSweepGC"}
+
+    pushd $MCSERVER_PATH > /dev/null
+    echo "Running Minecraft"
+    echo "MINECRAFT_OPTS: $MINECRAFT_OPTS"
+    exec java $MINECRAFT_OPTS -jar $MCSERVER_PATH/$MCFORGE_SERVER_JAR "$@"
+}
+
+update_permissions() {
+    chown -R minecraft:minecraft $MCSERVER_PATH
+}
+
+server_start() {
+    if ps ax | grep -v grep | grep -v -i SCREEN | grep $SCREEN_NAME > /dev/null
+    then
+        echo "Server is already running"
+    else
+        echo "Server was not running"
+        screen -dmS $SCREEN_NAME java $MINECRAFT_OPTS -jar $MCSERVER_PATH/$MCFORGE_SERVER_JAR
+    fi
+}
+
+server_stop() {
+    if ps ax | grep -v grep | grep -v -i SCREEN | grep $SCREEN_NAME > /dev/null
+    then
+        echo "Server is already running"
+        screen -p 0 -S $SCREEN_NAME -X eval 'stuff \"say Arrêt du serveur dans 10 secondes!\"\015'
+        screen -p 0 -S $SCREEN_NAME -X eval 'stuff \"save-all\"\015'
+        screen -p 0 -S $SCREEN_NAME -X eval 'stuff \"stop\"\015'
+    else
+        echo "Server was not running"
+    fi
+}
+server_force_stop() {
+    if ps ax | grep -v grep | grep -v -i SCREEN | grep $SCREEN_NAME > /dev/null
+    then
+        echo "Server is already running"
+        screen -X -S $SCREEN_NAME quit
+    else
+        echo "Server was not running"
+    fi
+}
+
+case "$1" in
+    start)
+        server_start
+        ;;
+    stop)
+        server_stop
+        ;;
+    force-stop)
+        server_force_stop
+        ;;
+    run)
+        check_env
+        download_server
+        install_server
+        first_run
+        ;;
+    *)
+        exec "$@"
+esac
