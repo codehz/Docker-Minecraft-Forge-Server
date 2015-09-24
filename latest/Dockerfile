@@ -24,6 +24,7 @@ VOLUME ["$MCSERVER_PATH"]
 WORKDIR $MCSERVER_PATH
 
 COPY minecraft /usr/local/bin/
+RUN chmod +x /usr/local/bin/minecraft
 
 EXPOSE 25565
 
