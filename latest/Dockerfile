@@ -28,7 +28,6 @@ RUN chmod +x /usr/local/bin/minecraft
 
 EXPOSE 25565
 
-ENTRYPOINT ["/usr/local/bin/minecraft"]
-CMD ["run"]
+CMD ["minecraft", "run"]
 
 CMD /bin/bash
