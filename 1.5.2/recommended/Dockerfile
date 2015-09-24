@@ -30,4 +30,4 @@ EXPOSE 25565
 
 CMD ["minecraft", "run"]
 
-CMD /bin/bash
+CMD ["/bin/bash"]

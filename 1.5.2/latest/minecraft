@@ -112,6 +112,10 @@ server_start() {
     fi
 }
 
+sserver_start() {
+    java $MINECRAFT_OPTS -jar $MCSERVER_PATH/$MCFORGE_SERVER_JAR
+}
+
 server_stop() {
     if ps ax | grep -v grep | grep -v -i SCREEN | grep $SCREEN_NAME > /dev/null
     then
@@ -148,7 +152,7 @@ case "$1" in
         download_server
         install_server
         first_run
-        server_start
+        sserver_start
         ;;
     *)
         exec "$@"
