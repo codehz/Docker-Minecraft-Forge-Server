@@ -103,56 +103,17 @@ update_permissions() {
 }
 
 server_start() {
-    if ps ax | grep -v grep | grep -v -i SCREEN | grep $SCREEN_NAME > /dev/null
-    then
-        echo "Server is already running"
-    else
-        echo "Server was not running"
-        screen -dmS $SCREEN_NAME java $MINECRAFT_OPTS -jar $MCSERVER_PATH/$MCFORGE_SERVER_JAR
-    fi
-}
-
-sserver_start() {
+    echo "Server was not running"
     java $MINECRAFT_OPTS -jar $MCSERVER_PATH/$MCFORGE_SERVER_JAR
 }
 
-server_stop() {
-    if ps ax | grep -v grep | grep -v -i SCREEN | grep $SCREEN_NAME > /dev/null
-    then
-        echo "Server is already running"
-        screen -p 0 -S $SCREEN_NAME -X eval 'stuff \"say Arrêt du serveur dans 10 secondes!\"\015'
-        screen -p 0 -S $SCREEN_NAME -X eval 'stuff \"save-all\"\015'
-        screen -p 0 -S $SCREEN_NAME -X eval 'stuff \"stop\"\015'
-    else
-        echo "Server was not running"
-    fi
-}
-server_force_stop() {
-    if ps ax | grep -v grep | grep -v -i SCREEN | grep $SCREEN_NAME > /dev/null
-    then
-        echo "Server is already running"
-        screen -X -S $SCREEN_NAME quit
-    else
-        echo "Server was not running"
-    fi
-}
-
 case "$1" in
-    start)
-        server_start
-        ;;
-    stop)
-        server_stop
-        ;;
-    force-stop)
-        server_force_stop
-        ;;
     run)
         check_env
         download_server
         install_server
         first_run
-        sserver_start
+        server_start
         ;;
     *)
         exec "$@"
