@@ -27,5 +27,6 @@ COPY minecraft /usr/local/bin/
 RUN chmod +x /usr/local/bin/minecraft
 
 EXPOSE 25565
+EXPOSE 25575
 
 CMD ["minecraft", "run"]

@@ -15,22 +15,22 @@ JAVA_PERMSIZE=${JAVA_PERMSIZE:-"755m"}
 MINECRAFT_OPTS=${MINECRAFT_OPTS:-"-server -Xmx$JAVA_XMX -Xms$JAVA_XMS -XX:MaxPermSize=$JAVA_PERMSIZE -XX:+UseParNewGC -XX:+UseConcMarkSweepGC"}
 
 if [ $# -eq 0 ]; then
-    echo "Usage: `basename $0` {start|stop|restart|update <minecraft version> <forge version>}" >&2
+    echo "用法: `basename $0` {start|stop|restart|update <minecraft version> <forge version>}" >&2
     exit 1
 fi
 
 check_env() {
     if [ "$MINECRAFT_EULA" == "true" ]; then
-        echo "Updating $MCSERVER_PATH/eula.txt"
+        echo "更新 $MCSERVER_PATH/eula.txt 中"
         echo "eula=$MINECRAFT_EULA" > $MCSERVER_PATH/eula.txt
     else
-        >&2 echo "Mojang requires you to accept their EULA. You need to set the MINECRAFT_EULA variable to true."
+        >&2 echo "Mojang 要求你必须同意 EULA. 你需要设置 MINECRAFT_EULA 环境变量为 true."
         exit 1
     fi
 
     # Do not allow to run if there is no DEFAULT_OP
     if [ -z "$DEFAULT_OP" ]; then
-        >&2 echo "DEFAULT_OP is required. Please set this variable to continue."
+        >&2 echo "DEFAULT_OP 是必要的. 请设置以继续进程."
         exit 1
     fi
 }
@@ -38,11 +38,11 @@ check_env() {
 download_server() {
     # Download the Minecraft server JAR if it does not exist.
     if [ ! -f "$MCSERVER_PATH/$MCFORGE_INSTALLER_JAR" ]; then
-        echo "Downloading $MCFORGE_INSTALLER_JAR"
+        echo "下载 $MCFORGE_INSTALLER_JAR"
         curl -f -S $MCFORGE_INSTALLER_URL -o $MCSERVER_PATH/$MCFORGE_INSTALLER_JAR
 
         if [ $? -ne 0 ]; then
-            >&2 echo "Unable to download $MCFORGE_INSTALLER_JAR."
+            >&2 echo "无法下载 $MCFORGE_INSTALLER_JAR."
             exit 1
         fi
     fi
@@ -50,16 +50,16 @@ download_server() {
 install_server() {
     # Download the Minecraft server JAR if it does not exist.
     if [ -f "$MCSERVER_PATH/$MCFORGE_INSTALLER_JAR" ]; then
-        echo "Install forge V$MCFORGE_VERSION"
+        echo "安装 forge V$MCFORGE_VERSION"
         java -server -jar $MCSERVER_PATH/$MCFORGE_INSTALLER_JAR --installServer
     else
-        echo "Unable install forge V$MCFORGE_VERSION"
-        echo "$MCSERVER_PATH/$MCFORGE_INSTALLER_JAR Not found"
+        echo "无法安装 forge V$MCFORGE_VERSION"
+        echo "$MCSERVER_PATH/$MCFORGE_INSTALLER_JAR 未找到"
     fi
 }
 first_run() {
     if [ ! -f "$MCSERVER_PATH/server.properties" ]; then
-        echo "Creating $MCSERVER_PATH/server.properties"
+        echo "创建 $MCSERVER_PATH/server.properties"
         echo "generator-settings=$GENERATOR_SETTINGS" >> $MCSERVER_PATH/server.properties
         echo "op-permission-level=${OP_PERMISSION_LEVEL:-4}" >> $MCSERVER_PATH/server.properties
         echo "allow-nether=${ALLOW_NETHER:-true}" >> $MCSERVER_PATH/server.properties
@@ -70,6 +70,7 @@ first_run() {
         echo "server-port=25565" >> $MCSERVER_PATH/server.properties
         echo "level-type=${LEVEL_TYPE:-DEFAULT}" >> $MCSERVER_PATH/server.properties
         echo "enable-rcon=${ENABLE_RCON:-false}" >> $MCSERVER_PATH/server.properties
+        echo "rcon_password=${RCON_PASSWORD:-12345678}" >> $MCSERVER_PATH/server.properties
         echo "force-gamemode=${FORCE_GAMEMODE:-false}" >> $MCSERVER_PATH/server.properties
         echo "level-seed=$LEVEL_SEED" >> $MCSERVER_PATH/server.properties
         echo "server-ip=$SERVER_IP" >> $MCSERVER_PATH/server.properties
@@ -93,7 +94,7 @@ first_run() {
 
     # Create default ops.txt if ops.json does not exist yet.
     if [ ! -f $MCSERVER_PATH/ops.json ]; then
-        echo "Adding $DEFAULT_OP to ops list."
+        echo "把 $DEFAULT_OP 添加到 OP 列表."
         echo "$DEFAULT_OP" > $MCSERVER_PATH/ops.txt
     fi
 }
@@ -103,7 +104,7 @@ update_permissions() {
 }
 
 server_start() {
-    echo "Server was not running"
+    echo "服务器没有运行 - 所以即将开始运行"
     java $MINECRAFT_OPTS -jar $MCSERVER_PATH/$MCFORGE_SERVER_JAR
 }
 
